@@ -1,3 +1,5 @@
+'use strict'
+
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
@@ -25,21 +27,25 @@ app.use(express.static(__dirname + '/public'));
 app.use(session({ secret: 'test'}));
 
 var restrict = (req, res, next) => {
-  if (req.session.user) {
+  console.log(req.session)
+  if (req.session.username) {
     next();
   } else {
     res.redirect('/login');
   }
 };
 
-app.get('/', restrict);
+app.get('/', restrict,
+  function(req, res) {
+    res.render('index');
+  });
 
 app.get('/create', restrict,  
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links',  
+app.get('/links', restrict,  
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
@@ -85,15 +91,39 @@ app.get('/login', (req, res) => {
   res.render('login');
 });
 
+app.post('/login', (req, res) => {
+  let username = req.body.username;
+  let password = req.body.password;
+  new User({ 
+    username: username,
+    password: password
+  }).fetch().then((found) => {
+    if (found) {
+      app.use(session({
+        username: found.attributes.username,
+        secret: 'test'
+      }));
+      res.redirect('/');
+    } else {
+      res.redirect('/login');
+    }
+  });
+});
+
 app.post('/signup', (req, res) => {
-  new User({
-    'username': req.body.username,
-    'password': req.body.password
-  }).fetch()
-    .then((data) => {
-      console.log(data)
-      res.end();
-    });
+  Users.create({
+    username: req.body.username,
+    password: req.body.password
+  }).then((data) => {
+    app.use(session({
+      username: data.username,
+      secret: 'test'
+    }));
+    res.redirect('/');
+    // log them in using ne)w username and password
+    // redirect them to index page
+    // res.render('/index')
+  });
 });
 
 
