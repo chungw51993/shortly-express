@@ -92,19 +92,25 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   let username = req.body.username;
   let password = req.body.password;
-  util.newUser(username, password).fetch().then((found) => {
-    if (found) {
-      req.session.username = found.attributes.username;
-      req.session.save((err) => {
-        if (err) {
-          throw err;
-        }
+  util.newUser(username).fetch().then((user) => {
+    if (user) {
+      user.comparePassword(password, (match) => {
+        req.session.username = username;
+        req.session.save((err) => {
+          if (err) {
+            throw err;
+          }
+        });
       });
       res.redirect('/');
     } else {
       res.redirect('/login');
     }
   });
+});
+
+app.get('/logout', (req, res) => {
+  res.redirect('/login');
 });
 
 app.get('/signup', (req, res) => {
@@ -118,7 +124,7 @@ app.post('/signup', (req, res) => {
     res.status('400');
     res.send('Invalid username or password!');
   } else {
-    util.newUser(username, password).fetch().then((found) => {
+    util.newUser(username).fetch().then((found) => {
       if (found) {
         res.send('Try different username');
       } else {
