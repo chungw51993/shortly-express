@@ -114,7 +114,7 @@ describe('', function() {
       });
     });
 
-    xdescribe('Shortening links:', function() {
+    describe('Shortening links:', function() {
 
       var options = {
         'method': 'POST',
@@ -163,7 +163,7 @@ describe('', function() {
 
     }); // 'Shortening links'
 
-    xdescribe('With previously saved urls:', function() {
+    describe('With previously saved urls:', function() {
 
       var link;
 
@@ -209,7 +209,7 @@ describe('', function() {
         });
       });
 
-      xit('Returns all of the links to display on the links page', function(done) {
+      it('Returns all of the links to display on the links page', function(done) {
         var options = {
           'method': 'GET',
           'uri': 'http://127.0.0.1:4568/links'

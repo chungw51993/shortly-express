@@ -1,9 +1,10 @@
-'use strict'
+'use strict';
 
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var cookieParser = require('cookie-parser');
 var session = require('express-session');
 
 
@@ -24,28 +25,25 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-app.use(session({ secret: 'test'}));
+app.use(cookieParser());
+app.use(session({
+  secret: 'test',
+  resave: 'false',
+  saveUninitialized: 'false'
+}));
 
-var restrict = (req, res, next) => {
-  console.log(req.session)
-  if (req.session.username) {
-    next();
-  } else {
-    res.redirect('/login');
-  }
-};
 
-app.get('/', restrict,
+app.get('/', util.restrict,
   function(req, res) {
     res.render('index');
   });
 
-app.get('/create', restrict,  
+app.get('/create', util.restrict,  
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', restrict,  
+app.get('/links', util.restrict,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
@@ -94,15 +92,14 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   let username = req.body.username;
   let password = req.body.password;
-  new User({ 
-    username: username,
-    password: password
-  }).fetch().then((found) => {
+  util.newUser(username, password).fetch().then((found) => {
     if (found) {
-      app.use(session({
-        username: found.attributes.username,
-        secret: 'test'
-      }));
+      req.session.username = found.attributes.username;
+      req.session.save((err) => {
+        if (err) {
+          throw err;
+        }
+      });
       res.redirect('/');
     } else {
       res.redirect('/login');
@@ -110,20 +107,39 @@ app.post('/login', (req, res) => {
   });
 });
 
+app.get('/signup', (req, res) => {
+  res.render('signup');
+});
+
 app.post('/signup', (req, res) => {
-  Users.create({
-    username: req.body.username,
-    password: req.body.password
-  }).then((data) => {
-    app.use(session({
-      username: data.username,
-      secret: 'test'
-    }));
-    res.redirect('/');
-    // log them in using ne)w username and password
+  let username = req.body.username;
+  let password = req.body.password;
+  if (!username || !password) {
+    res.status('400');
+    res.send('Invalid username or password!');
+  } else {
+    util.newUser(username, password).fetch().then((found) => {
+      if (found) {
+        res.send('Try different username');
+      } else {
+        Users.create({
+          username: username,
+          password: password
+        }).then((data) => {
+          req.session.username = data.attributes.username;
+          req.session.save((err) => {
+            if (err) {
+              throw err;
+            }
+          });
+          res.redirect('/');
+        });
+      }
+    });
+  }    
+    // log them in using new username and password
     // redirect them to index page
     // res.render('/index')
-  });
 });
 
 
